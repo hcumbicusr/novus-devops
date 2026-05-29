@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(ls \"C:\\\\Users\\\\henry\\\\OneDrive\\\\Documentos\\\\ARQUITECTURA DE SOFTWARE - MASTER PLAN\\\\AI-AGENTS\\\\Reingenieria\\\\backend\\\\app\\\\ventas\\\\\")"
+    ]
+  }
+}

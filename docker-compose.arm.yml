@@ -1,0 +1,107 @@
+services:
+  # ── FRONTENDS (Angular) ──
+  novus-front:
+    image: hcumbicusr/novus-front:latest
+    container_name: novus-front
+    ports:
+      - "80:80"
+    env_file:
+      - .env
+    restart: unless-stopped
+    depends_on:
+      - novus-back
+
+  novus-portal-clientes:
+    image: hcumbicusr/novus-portal-clientes:latest
+    container_name: novus-portal-clientes
+    ports:
+      - "4300:80"
+    env_file:
+      - .env
+    restart: unless-stopped
+    depends_on:
+      - novus-back
+
+  # ── BACKEND (FastAPI & Celery) ──
+  novus-back:
+    image: hcumbicusr/novus-back:latest
+    container_name: novus-back
+    ports:
+      - "8001:8000"
+    env_file:
+      - .env
+    volumes:
+      - novus_certificados:/app/storage/certificados
+    restart: unless-stopped
+    depends_on:
+      novus-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery_worker:
+    image: hcumbicusr/novus-back:latest
+    container_name: novus-celery-worker
+    command: celery -A app.core.celery_app worker --loglevel=info
+    env_file:
+      - .env
+    volumes:
+      - novus_certificados:/app/storage/certificados
+    restart: unless-stopped
+    depends_on:
+      novus-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery_beat:
+    image: hcumbicusr/novus-back:latest
+    container_name: novus-celery-beat
+    command: celery -A app.core.celery_app beat --loglevel=info
+    env_file:
+      - .env
+    restart: unless-stopped
+    depends_on:
+      novus-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── INFRAESTRUCTURA DE DATOS ──
+  novus-db:
+    image: postgres:16-alpine
+    container_name: novus-postgres
+    env_file:
+      - .env
+    environment:
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      - "${POSTGRES_EXTERNAL_PORT:-5432}:5432"
+    volumes:
+      # Persistencia directa en el sistema de archivos de la Pi
+      - /home/pi/novuserp_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: novus-redis
+    command: redis-server --appendonly yes
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - novus_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  novus_redis_data:
+  novus_certificados:
