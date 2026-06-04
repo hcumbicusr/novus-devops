@@ -29,9 +29,10 @@ services:
   # ── BACKEND (FastAPI & Celery) ──
   novus-back:
     build:
-      context: ../backend
+      context: ../novus-back
       dockerfile: Dockerfile
     container_name: novus-back
+    working_dir: /app
     # 1. SOBRESCRIBIMOS EL COMANDO PARA ACTIVAR EL HOT-RELOAD
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     ports:
@@ -40,7 +41,7 @@ services:
       - .env
     volumes:
       # 2. CREAMOS EL TÚNEL: Tu código local de Windows -> El contenedor
-      - ../backend:/app
+      - ../novus-back:/app
       - novus_certificados:/app/storage/certificados
     restart: unless-stopped
     depends_on:
@@ -51,7 +52,7 @@ services:
 
   celery_worker:
     build:
-      context: ../backend
+      context: ../novus-back
       dockerfile: Dockerfile
     container_name: novus-celery-worker
     # Celery en modo dev requiere reiniciar para leer cambios profundos, 
@@ -60,7 +61,7 @@ services:
     env_file:
       - .env
     volumes:
-      - ../backend:/app  # <-- Volumen agregado aquí también
+      - ../novus-back:/app  # <-- Volumen agregado aquí también
       - novus_certificados:/app/storage/certificados
     restart: unless-stopped
     depends_on:
@@ -71,14 +72,14 @@ services:
 
   celery_beat:
     build:
-      context: ../backend
+      context: ../novus-back
       dockerfile: Dockerfile
     container_name: novus-celery-beat
     command: celery -A app.core.celery_app beat --loglevel=info
     env_file:
       - .env
     volumes:
-      - ../backend:/app  # <-- Volumen agregado aquí también
+      - ../novus-back:/app  # <-- Volumen agregado aquí también
     restart: unless-stopped
     depends_on:
       novus-db:
